@@ -36,6 +36,8 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+
+import com.google.common.io.ByteStreams;
 import net.md_5.specialsource.repo.ClassRepo;
 import net.md_5.specialsource.repo.JarRepo;
 import org.objectweb.asm.ClassReader;
@@ -186,9 +188,15 @@ public class JarRemapper extends CustomRemapper {
                         // remap classes
                         name = name.substring(0, name.length() - CLASS_LEN);
 
-                        data = remapClassFile(is, repo);
-                        String newName = map(name);
+                        data = ByteStreams.toByteArray(is);
+                        try {
+                            data = remapClassFile(data, repo);
+                        } catch (Exception e) {
+                            System.out.println("Error remapping class "+name);
+                            e.printStackTrace();
+                        }
 
+                        String newName = map(name);
                         entry = new JarEntry(newName == null ? name : newName + ".class");
                     } else if (name.endsWith(".DSA") || name.endsWith(".SF")) {
                         // skip signatures
