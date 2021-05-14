@@ -183,39 +183,39 @@ public class JarRemapper extends CustomRemapper {
 
                 InputStream is = jar.getResource(name);
                 try {
-                    byte[] data;
+                    if (name.endsWith(".DSA") || name.endsWith(".SF")) {
+                        // skip signatures
+                        continue;
+                    }
+
+                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                    int n;
+                    byte[] b = new byte[1 << 15]; // Max class file size
+                    while ((n = is.read(b, 0, b.length)) != -1) {
+                        buffer.write(b, 0, n);
+                    }
+                    buffer.flush();
+                    byte[] data = buffer.toByteArray();
+
                     if (name.endsWith(".class")) {
                         // remap classes
                         name = name.substring(0, name.length() - CLASS_LEN);
 
-                        data = ByteStreams.toByteArray(is);
                         try {
                             data = remapClassFile(data, repo);
                         } catch (Exception e) {
                             System.out.println("Error remapping class "+name);
-                            e.printStackTrace();
+                            e.printStackTrace(System.out);
                         }
 
                         String newName = map(name);
                         entry = new JarEntry(newName == null ? name : newName + ".class");
-                    } else if (name.endsWith(".DSA") || name.endsWith(".SF")) {
-                        // skip signatures
-                        continue;
                     } else {
                         // copy other resources
                         if (!copyResources) {
                             continue; // unless generating an API
                         }
                         entry = new JarEntry(name);
-
-                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                        int n;
-                        byte[] b = new byte[1 << 15]; // Max class file size
-                        while ((n = is.read(b, 0, b.length)) != -1) {
-                            buffer.write(b, 0, n);
-                        }
-                        buffer.flush();
-                        data = buffer.toByteArray();
                     }
                     entry.setTime(0);
                     out.putNextEntry(entry);
